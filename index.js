@@ -30,6 +30,7 @@ let phonebookEntries = [
 
 app.use(morgan('tiny'))
 app.use(cors())
+app.use(express.static('dist'))
 
 const unknownEndpoint = (request, response) => {
     response.status(404).send({ error: 'unknown endpoint' })
