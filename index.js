@@ -4,6 +4,9 @@ const cors = require('cors')
 
 const app = express()
 app.use(express.json())
+app.use(morgan('tiny'))
+app.use(cors())
+app.use(express.static('dist'))
 
 let phonebookEntries = [
     {
@@ -28,11 +31,8 @@ let phonebookEntries = [
     }
 ]
 
-app.use(morgan('tiny'))
-app.use(cors())
-app.use(express.static('dist'))
-
 const unknownEndpoint = (request, response) => {
+    console.log(request)
     response.status(404).send({ error: 'unknown endpoint' })
   }
 
@@ -76,15 +76,15 @@ app.post('/api/persons', (req, res) => {
     const newEntry = req.body
     newEntry.id = generateUniqueID()
     console.log(newEntry)
+
     if (!newEntry.name || !newEntry.number) {
-        res.status(400).send('Error. No name or number set.')
+        return res.status(400).send('Error. No name or number set.')
     } else if (phonebookEntries.find(entry => entry.name === newEntry.name || entry.number === newEntry.number)) {
-        res.status(400).send('Error. Username or number already taken.')
+        return res.status(400).send('Error. Username or number already taken.')
     }
     updatedData = phonebookEntries.concat(newEntry)
     phonebookEntries = updatedData
     res.json(updatedData)
-    console.log(updatedData)
 })
 
 app.use(unknownEndpoint)
