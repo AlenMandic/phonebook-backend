@@ -1,95 +1,114 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
 
 const app = express()
 app.use(express.json())
+app.use(express.static('dist'))
 app.use(morgan('tiny'))
 app.use(cors())
-app.use(express.static('dist'))
 
-let phonebookEntries = [
-    {
-        "id": 1,
-        "name": "Arto Hellas",
-        "number": "040-123456"
-    },
-    {
-        "id": 2,
-        "name": "Ada Lovelace",
-        "number": "39-44-5323523"
-    },
-    {
-        "id": 3,
-        "name": "Dan Abramov",
-        "number": "12-43-234345"
-    },
-    {
-        "id": 4,
-        "name": "Mary Poppendieck",
-        "number": "39-23-6423122"
-    }
-]
+const Person = require("./models/person") // const Person = mongoose.model('Person', personSchema)
 
 const unknownEndpoint = (request, response) => {
     console.log(request)
     response.status(404).send({ error: 'unknown endpoint' })
   }
 
+const errorHandler = (error, req, res, next) => {
+  console.error(error.message)
+
+  if(error.name === 'CastError') {
+   return res.status(400).send({error: 'Malformatted ID'})
+  } else if(error.name === 'ValidationError') {
+    return res.status(400).send({error: error.message})
+  }
+  next(error)
+}
+
 app.get('/', (request, response) => {
     response.send('<h1>Hello World!</h1>')
 })
 
 app.get('/api/persons', (req, res) => {
-    res.json(phonebookEntries)
+    Person.find({}).then(result => {
+        res.json(result)
+    })
 })
 
 app.get('/api/info', (req, res) => {
-    const phonebookLength = phonebookEntries.length;
-    res.send(`Phonebook currently has ${phonebookLength} people <br></br> ${new Date()}`)
+    const phonebookLength = Person.find({}).then(result => {
+        res.json(`Phonebook currently has ${result.length} people at ${new Date()}`)
+    }).then(documentLength => {
+        res.send(phonebookLength)
+    })
 })
 
-app.get('/api/persons/:id', (req, res) => {
-    const id = Number(req.params.id)
-    const ourEntry = phonebookEntries.find(entry => entry.id === id)
+app.get('/api/persons/:id', (req, res, next) => {
+    const id = req.params.id
+    Person.findById(id).then(person => {
+        if(person) {
+            res.json(person)
+        } else {
+            return res.status(404).end() // handle if person doesn't exist routing (invalid ID)
+        }
+    })
+    .catch(error =>  next(error)) // if the above promise returned by findById() get's rejected, do this.
+})
 
-    if (ourEntry) {
-        res.json(ourEntry)
-    } else {
-        res.send('Error. Entry not found').status(404)
+app.delete('/api/persons/:id', (req, res, next) => {
+    const id = req.params.id
+    Person.findByIdAndRemove(id).then(result => {
+        res.status(204).end()
+    })
+    .catch(error => next(error))  // next(error) forwards any errors logged to be handled by our error middleware below.
+})
+
+// Validation is off by default in mongoose for 'updater' methods like PUT. In order to turn them on we have to add the parameter to the findByIdAndUpdate function: { new: true, runValidators: true, context: 'query' }
+app.put('/api/persons/:id', (req, res, next) => {
+    const body = req.body
+
+    const person = {
+        name: body.name,
+        number: body.number,
     }
+
+    Person.findByIdAndUpdate(req.params.id, person,  { new: true, runValidators: true, context: 'query' }).then(updatedPerson => {
+        console.log(updatedPerson)
+
+        res.json(updatedPerson)
+
+    }).catch(error => {
+        console.log(error)
+        next(error)
+    })
 })
 
-app.delete('/api/persons/:id', (req, res) => {
-    const id = Number(req.params.id)
-    phonebookEntries = phonebookEntries.filter(entry => entry.id !== id)
-
-    res.status(204).end()
-
-})
-
-function generateUniqueID() {
-    return Number((Math.random() * 10000000000).toFixed())
-}
-
-app.post('/api/persons', (req, res) => {
+app.post('/api/persons', (req, res, next) => {
     const newEntry = req.body
-    newEntry.id = generateUniqueID()
-    console.log(newEntry)
 
-    if (!newEntry.name || !newEntry.number) {
-        return res.status(400).send('Error. No name or number set.')
-    } else if (phonebookEntries.find(entry => entry.name === newEntry.name || entry.number === newEntry.number)) {
-        return res.status(400).send('Error. Username or number already taken.')
+    if (newEntry.name === undefined || newEntry.number === undefined) {
+        return res.status(400).json({ error: 'content missing' })
     }
-    updatedData = phonebookEntries.concat(newEntry)
-    phonebookEntries = updatedData
-    res.json(updatedData)
+
+    const person = new Person({
+        name: newEntry.name,
+        number: newEntry.number,
+    })
+
+    person.save().then(newPerson => {
+        res.json(newPerson)
+    })
+    .catch(error => {
+        next(error)
+    })
 })
 
 app.use(unknownEndpoint)
+app.use(errorHandler)
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 app.listen(PORT, () => {
     console.log(`Server running on PORT ${PORT}`)
 })
