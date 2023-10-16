@@ -8,6 +8,7 @@ Going through the Helsinki FullStackOpen curriculum/course, my project submissio
 - Tested the API using Postman
 - Since we now have 1 repo instead of 2, we update our URL route to a 'base url'
 - Render recommends that for setting PORT in our back-end we use: `const PORT = process.env.PORT || 3001` so it's either our standard port or their defined route
-- We can add,update, delete and read ( CRUD ) phonebook entries.
+- We can add, update, delete and read ( CRUD ) phonebook entries.
+- Enabled mongoose validators for 'patch' methods like PUT, and added notification error/success handling for the front-end
 - All data is stored on MongoDB
 - Using Mongo Atlas and Mongoose ODM
