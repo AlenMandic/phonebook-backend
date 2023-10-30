@@ -1,4 +1,4 @@
-# Live site: https://phonebook-backend-fyuu.onrender.com](https://kh5h73-3001.csb.app
+# Live site: https://kh5h73-3001.csb.app/
 
 - Fullstack app hosted on CodeSandbox. 
 - I've made the front-end and back-end separately ultimately combining them together by building a production folder of the front-end using vite's 'npm run build' command.
